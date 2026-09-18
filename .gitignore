@@ -1,0 +1,41 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
+# Databases & Local Traffic Logs
+*.sqlite3
+*.db
+backend/logs/*.csv
+backend/logs/*.log
+!backend/logs/.gitkeep
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Temporary extraction & recovery scripts
+extract.py
+find_view.py
+fix_old.py
+rebuild.py
+restore.py

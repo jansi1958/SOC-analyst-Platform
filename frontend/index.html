@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Network Anomaly Detection SOC</title>
+    
+    <!-- Premium Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;600;800&family=Space+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Dependencies -->
+    <script src="https://unpkg.com/3d-force-graph"></script>
+
+    <style>
+        :root {
+            --bg-dark: #020617;
+            --glass-bg: rgba(30, 41, 59, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --neon-blue: #38bdf8;
+            --neon-purple: #a855f7;
+            --neon-red: #f43f5e;
+            --neon-green: #10b981;
+            --neon-orange: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            
+            /* Clean Gradient Background */
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; margin: 0; }
+        
+        .header {
+            padding: 25px 40px;
+            background: rgba(2, 6, 23, 0.7);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--neon-green);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .container {
+            padding: 30px 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+        }
+
+        .stat-value {
+            font-size: 42px;
+            font-weight: 800;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+        }
+
+        #totalAlerts { color: var(--neon-red); }
+        #highRiskAlerts { color: var(--neon-red); }
+        #avgThreatScore { color: var(--neon-orange); }
+
+        /* Layout Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Graph Container */
+        .graph-container {
+            width: 100%;
+            height: 350px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Lists */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            transition: background 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .list-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .ip-text {
+            font-family: 'Space Mono', monospace;
+            color: var(--neon-blue);
+            font-size: 13px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 15px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        td {
+            padding: 15px;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .badge.high { background: rgba(244, 63, 94, 0.2); color: var(--neon-red); border: 1px solid rgba(244, 63, 94, 0.3); }
+        .badge.med { background: rgba(245, 158, 11, 0.2); color: var(--neon-orange); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .badge.low { background: rgba(16, 185, 129, 0.2); color: var(--neon-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        /* Buttons */
+        .ai-btn {
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue));
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .ai-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+        }
+
+        .pdf-btn {
+            background: linear-gradient(135deg, var(--neon-red), #f97316);
+            box-shadow: none;
+        }
+        .pdf-btn:hover { box-shadow: 0 4px 15px rgba(244, 63, 94, 0.4); }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal-content {
+            background: #0f172a;
+            margin: 5% auto;
+            padding: 40px;
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            width: 60%;
+            max-width: 800px;
+            color: var(--text-main);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .close-modal {
+            color: var(--text-muted);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-modal:hover { color: white; }
+
+        /* Markdown Styles for Report */
+        .markdown-body h1, .markdown-body h2 { color: var(--neon-blue); border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-top: 30px; }
+        .markdown-body h3 { color: var(--neon-purple); margin-top: 20px; }
+        .markdown-body p { line-height: 1.6; color: #cbd5e1; }
+        .markdown-body ul { padding-left: 20px; }
+        .markdown-body li { margin-bottom: 10px; color: #cbd5e1; }
+        .markdown-body strong { color: white; }
+
+        /* Loader */
+        .loader {
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--neon-purple);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 40px auto;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Chat Widget Styles */
+        .chat-toggle {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(168, 85, 247, 0.5);
+            z-index: 1000;
+            transition: transform 0.2s;
+        }
+
+        .chat-toggle:hover { transform: scale(1.1); }
+
+        #chat-widget {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 380px;
+            height: 500px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            z-index: 999;
+            transform: translateY(120%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #chat-widget.open { transform: translateY(0); }
+
+        .chat-header {
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .msg {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            max-width: 85%;
+            line-height: 1.5;
+        }
+
+        .msg.bot {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            align-self: flex-start;
+            border-top-left-radius: 2px;
+        }
+
+        .msg.user {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            align-self: flex-end;
+            border-top-right-radius: 2px;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid var(--glass-border);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: var(--bg-dark);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .chat-input button {
+            background: var(--neon-blue);
+            color: #000;
+            border: none;
+            padding: 0 20px;
+            margin-left: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .chat-input button:hover { background: white; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1><i class="fas fa-shield-halved"></i> Sentinel SOC</h1>
+        <div class="live-indicator">
+            <div class="pulse"></div> AI ENGINE ACTIVE
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Total Packets</div>
+                <div class="stat-value" id="totalPackets">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Alerts</div>
+                <div class="stat-value" id="totalAlerts">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">High Risk Anomalies</div>
+                <div class="stat-value" id="highRiskAlerts">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Avg Threat Score</div>
+                <div class="stat-value" id="avgThreatScore">0</div>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT -->
+        <div class="main-grid">
+            
+            <!-- 3D GRAPH -->
+            <div class="panel" style="padding: 0; overflow: hidden; position: relative;">
+                <div style="position: absolute; top: 20px; left: 20px; z-index: 10; font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-project-diagram"></i> 3D Active Network Topography
+                </div>
+                <div class="graph-container" id="3d-graph"></div>
+            </div>
+
+            <!-- TOP ATTACKERS -->
+            <div class="panel">
+                <div class="panel-title"><i class="fas fa-crosshairs"></i> Top Attackers</div>
+                <div id="topAttackersList">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+            <!-- THREAT SUMMARY -->
+            <div class="panel">
+                <div class="panel-title"><i class="fas fa-biohazard"></i> Threat Summary</div>
+                <div id="threatSummaryList">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- ROW 2: TABLE -->
+        <div class="panel">
+            <div class="panel-title"><i class="fas fa-list"></i> Recent Security Events</div>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Alert Type</th>
+                            <th>Source IP</th>
+                            <th>Risk Level</th>
+                            <th>Score</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentAlertsTable">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- AI RESPONSE MODAL -->
+    <div id="aiModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2 style="margin-bottom: 20px; font-size: 24px;"><i class="fas fa-robot" style="color:var(--neon-purple)"></i> AI Response Plan Generated</h2>
+            <div id="aiReportContent" class="markdown-body">
+                <!-- Content injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CHATBOT WIDGET -->
+    <div class="chat-toggle" onclick="toggleChat()"><i class="fas fa-comment-dots"></i></div>
+    <div id="chat-widget">
+        <div class="chat-header">
+            <span><i class="fas fa-robot" style="color:var(--neon-purple)"></i> Security Copilot</span>
+            <span style="cursor:pointer; color:var(--text-muted);" onclick="toggleChat()"><i class="fas fa-times"></i></span>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="msg bot">Hello! I'm your AI Security Copilot. Ask me anything about the current network threats or ask me to explain an alert.</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chatInput" placeholder="Ask a question..." onkeypress="if(event.key === 'Enter') sendMsg()">
+            <button onclick="sendMsg()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+
+    <script>
+        let graph = null;
+        let currentRiskFilter = 'ALL';
+        let globalThreatData = null;
+        let globalAlertsData = null;
+
+        function filterTable(risk) {
+            currentRiskFilter = risk;
+            renderThreatSummary();
+            renderTable();
+        }
+
+        // Store active intervals to prevent overlapping animations
+        const animationTimers = {};
+
+        function animateValue(id, end) {
+            const obj = document.getElementById(id);
+            if (!obj) return;
+            const start = parseInt(obj.innerText) || 0;
+            if (start === end) return;
+            
+            // Clear any existing animation for this element
+            if (animationTimers[id]) clearInterval(animationTimers[id]);
+            
+            const duration = 500; // 500ms
+            const fps = 30;
+            const steps = Math.max(1, Math.floor(duration / (1000 / fps)));
+            const stepValue = (end - start) / steps;
+            
+            let currentStep = 0;
+            let current = start;
+            
+            animationTimers[id] = setInterval(() => {
+                currentStep++;
+                current += stepValue;
+                
+                if (currentStep >= steps) {
+                    obj.innerText = end;
+                    clearInterval(animationTimers[id]);
+                    delete animationTimers[id];
+                } else {
+                    obj.innerText = Math.round(current);
+                }
+            }, 1000 / fps);
+        }
+
+        async function loadDashboard() {
+            try {
+                const [statsRes, trafficRes, attackersRes, threatRes, alertsRes] = await Promise.all([
+                    fetch('/stats'), fetch('/traffic'), fetch('/top-attackers'), fetch('/threat-summary'), fetch('/alerts')
+                ]);
+
+                const statsData = await statsRes.json();
+                const trafficData = await trafficRes.json();
+                const attackersData = await attackersRes.json();
+
+                // 1. STATS
+                if (statsData) {
+                    animateValue("totalPackets", statsData.total_packets || 0);
+                    animateValue("totalAlerts", statsData.total_alerts || 0);
+                    animateValue("highRiskAlerts", statsData.high_risk_alerts || 0);
+                    document.getElementById("avgThreatScore").innerText = statsData.avg_threat_score || 0;
+                }
+
+                // 2. 3D GRAPH
+                const graphRes = await fetch('/graph-data');
+                const graphData = await graphRes.json();
+                
+                if (!graph) {
+                    const elem = document.getElementById('3d-graph');
+                    graph = ForceGraph3D()(elem)
+                        .backgroundColor('rgba(0,0,0,0)')
+                        .nodeColor(n => n.group === 1 ? '#38bdf8' : '#f43f5e')
+                        .nodeRelSize(6)
+                        .linkColor(() => 'rgba(255,255,255,0.1)')
+                        .linkWidth(link => link.weight > 100 ? 2 : 0.5)
+                        .linkDirectionalParticles(2)
+                        .linkDirectionalParticleSpeed(d => d.weight * 0.001)
+                        .graphData(graphData);
+                    
+                    let angle = 0;
+                    setInterval(() => {
+                        angle += Math.PI / 1000;
+                        graph.cameraPosition({
+                            x: 300 * Math.sin(angle),
+                            z: 300 * Math.cos(angle)
+                        });
+                    }, 50);
+                } else {
+                    graph.graphData(graphData);
+                }
+
+                // 3. ATTACKERS
+                if (attackersData) {
+                    const list = document.getElementById("topAttackersList");
+                    list.innerHTML = "";
+                    if(attackersData.length === 0) {
+                        list.innerHTML = "<div style='color:#64748b;'>No data</div>";
+                    }
+                    attackersData.forEach(att => {
+                        list.innerHTML += `<div class="list-item" style="padding: 12px; margin-bottom: 8px;"><span class="ip-text">${att.source_ip}</span><span style="font-weight:600;color:#f8fafc;">${att.alerts} Alerts</span></div>`;
+                    });
+                }
+
+                // 4. THREAT SUMMARY
+                const threatData = await threatRes.json();
+                globalThreatData = threatData;
+                renderThreatSummary();
+
+                // 5. TABLE
+                const alertsData = await alertsRes.json();
+                globalAlertsData = alertsData;
+                renderTable();
+
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        function renderThreatSummary() {
+            if (!globalThreatData) return;
+            const list = document.getElementById("threatSummaryList");
+            list.innerHTML = `
+                <div class="list-item" style="cursor:pointer; transition: 0.2s; border-left: 3px solid var(--neon-red); ${currentRiskFilter === 'HIGH' ? 'background:rgba(244,63,94,0.15);' : ''}" onclick="filterTable('HIGH')"><span style="color:var(--neon-red);font-weight:600">HIGH RISK</span><span>${globalThreatData.HIGH || 0}</span></div>
+                <div class="list-item" style="cursor:pointer; transition: 0.2s; border-left: 3px solid var(--neon-orange); ${currentRiskFilter === 'MEDIUM' ? 'background:rgba(245,158,11,0.15);' : ''}" onclick="filterTable('MEDIUM')"><span style="color:var(--neon-orange);font-weight:600">MEDIUM RISK</span><span>${globalThreatData.MEDIUM || 0}</span></div>
+                <div class="list-item" style="cursor:pointer; transition: 0.2s; border-left: 3px solid var(--neon-green); ${currentRiskFilter === 'LOW' ? 'background:rgba(16,185,129,0.15);' : ''}" onclick="filterTable('LOW')"><span style="color:var(--neon-green);font-weight:600">LOW RISK</span><span>${globalThreatData.LOW || 0}</span></div>
+                <div class="list-item" style="cursor:pointer; justify-content:center; transition: 0.2s; ${currentRiskFilter === 'ALL' ? 'background:rgba(255,255,255,0.1);' : ''}" onclick="filterTable('ALL')"><span style="color:#94a3b8;font-weight:600">SHOW ALL ALERTS</span></div>
+            `;
+        }
+
+        function renderTable() {
+            if (!globalAlertsData) return;
+            const table = document.getElementById("recentAlertsTable");
+            table.innerHTML = "";
+            
+            const arr = Array.isArray(globalAlertsData.alerts) ? globalAlertsData.alerts : globalAlertsData;
+            let filteredArr = arr.slice();
+            
+            if (currentRiskFilter !== 'ALL') {
+                filteredArr = filteredArr.filter(a => a.risk_level === currentRiskFilter);
+            }
+            
+            if(filteredArr.length === 0) {
+                table.innerHTML = "<tr><td colspan='6' style='text-align:center;color:#64748b;padding:30px;'>No security events match the current filter.</td></tr>";
+            } else {
+                // Keep top 20 latest
+                filteredArr.slice(0, 20).forEach(alert => {
+                    let riskClass = "low";
+                    if (alert.risk_level === "HIGH") riskClass = "high";
+                    else if (alert.risk_level === "MEDIUM") riskClass = "med";
+
+                    // Format Timestamp
+                    let timeStr = "N/A";
+                    if(alert.timestamp) {
+                        const d = new Date(alert.timestamp);
+                        timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                    }
+
+                    table.innerHTML += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.3s;" onmouseover="this.style.background='rgba(56, 189, 248, 0.05)'" onmouseout="this.style.background='transparent'">
+                            <td style="color:#94a3b8; font-family: 'Space Mono', monospace; font-size: 13px;">${timeStr}</td>
+                            <td style="font-weight:600;">${alert.alert_type}</td>
+                            <td class="ip-text">${alert.source_ip}</td>
+                            <td><span class="badge ${riskClass}">${alert.risk_level}</span></td>
+                            <td style="font-family: 'Space Mono', monospace; color:var(--text-main); font-weight: bold;">${alert.threat_score}</td>
+                            <td>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="ai-btn" onclick='generateReport(${JSON.stringify(alert).replace(/'/g, "&#39;")})'>
+                                        <i class="fas fa-sparkles"></i> AI Plan
+                                    </button>
+                                    <button class="ai-btn pdf-btn" onclick="window.open('/export-pdf/${alert.id}')">
+                                        <i class="fas fa-file-pdf"></i> PDF
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="6" style="padding-top: 0; padding-bottom: 15px; color: #cbd5e1; font-size: 13px;">
+                                <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border-left: 3px solid ${riskClass === 'high' ? 'var(--neon-red)' : 'var(--neon-blue)'};">
+                                    ${alert.description}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        // --- LLM REPORT GENERATION ---
+
+        function closeModal() {
+            document.getElementById("aiModal").style.display = "none";
+        }
+
+        async function generateReport(alertObj) {
+            const modal = document.getElementById("aiModal");
+            const content = document.getElementById("aiReportContent");
+            
+            modal.style.display = "block";
+            content.innerHTML = `
+                <div class="loader"></div>
+                <p style="text-align:center; color:#94a3b8;">Synthesizing threat intelligence... Please wait.</p>
+            `;
+            
+            try {
+                const response = await fetch('/generate-report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alert_type: alertObj.alert_type,
+                        severity: alertObj.severity,
+                        source_ip: alertObj.source_ip,
+                        description: alertObj.description,
+                        protocol: alertObj.protocol || "UNKNOWN",
+                        packet_size: alertObj.packet_size || 0,
+                        destination_port: alertObj.destination_port || 0
+                    })
+                });
+                const data = await response.json();
+                
+                // Extremely simple markdown parser for bold and lists
+                let formattedText = data.report
+                    .replace(/### (.*?)\n/g, "<h3>$1</h3>")
+                    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+                    .replace(/\* ([^\n]+)/g, "<li>$1</li>")
+                    .replace(/`([^`]+)`/g, "<code style='background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;'>$1</code>")
+                    .replace(/\n/g, "<br>");
+                    
+                content.innerHTML = formattedText;
+            } catch (err) {
+                content.innerHTML = `<p style="color:#ef4444;">Error generating report. Is the backend running?</p>`;
+            }
+        }
+
+        // --- CHAT WIDGET ---
+        function toggleChat() {
+            document.getElementById('chat-widget').classList.toggle('open');
+        }
+
+        async function sendMsg() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if(!msg) return;
+            
+            const body = document.getElementById('chatBody');
+            
+            // Add user msg
+            body.innerHTML += `<div class="msg user">${msg}</div>`;
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+            
+            // Add loader msg
+            const id = 'loader-' + Date.now();
+            body.innerHTML += `<div class="msg bot" id="${id}">...</div>`;
+            body.scrollTop = body.scrollHeight;
+
+            try {
+                const res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: msg})
+                });
+                const data = await res.json();
+                
+                document.getElementById(id).innerText = data.reply;
+            } catch(e) {
+                document.getElementById(id).innerText = "Error connecting to AI.";
+            }
+            body.scrollTop = body.scrollHeight;
+        }
+
+        // Initial Load
+        loadDashboard();
+        
+        // Auto Refresh
+        setInterval(loadDashboard, 5000);
+
+    </script>
+</body>
+</html>

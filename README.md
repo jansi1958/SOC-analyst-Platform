@@ -178,5 +178,5 @@ Watch the SOC dashboard at `http://localhost:8000` react in real time.
 
 ## Author
 
-- **Ongkar Pal** ([@Ongkar08](https://github.com/Ongkar08))
+- **Jansi Verma** ((https://github.com/jansi1958))
 - B. Tech CSE, Galgotias University
